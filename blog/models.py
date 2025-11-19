@@ -30,3 +30,6 @@ class Post(models.Model):
     # Redirecionamento após criar/editar
     def get_absolute_url(self):
         return reverse('detalhe_post', args=[str(self.id)])
+    
+
+    
