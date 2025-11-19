@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Lista de Posts</title>
+</head>
+<body>
+    <h1>Meus Posts</h1>
+    
+    <a href="{% url 'criar_post' %}">➕ Criar Novo Post</a>
+    <hr>
+
+    <ul>
+        {% for post in object_list %}
+            <li>
+                <strong><a href="{% url 'detalhe_post' post.pk %}">{{ post.titulo }}</a></strong>
+                <br>
+                <small>Autor: {{ post.autor.Nome }}</small> | 
+                <a href="{% url 'editar_post' post.pk %}">Editar</a> | 
+                <a href="{% url 'deletar_post' post.pk %}">Excluir</a>
+            </li>
+            <br>
+        {% empty %}
+            <li>Nenhum post encontrado.</li>
+        {% endfor %}
+    </ul>
+</body>
+</html>

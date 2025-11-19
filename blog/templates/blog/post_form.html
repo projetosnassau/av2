@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html>
+<body>
+    <h2>{% if form.instance.pk %}Editar Post{% else %}Novo Post{% endif %}</h2>
+
+    <form method="post">
+        {% csrf_token %} <table>
+            {{ form.as_table }} </table>
+        
+        <br>
+        <button type="submit">Salvar</button>
+    </form>
+
+    <a href="{% url 'lista_posts' %}">Cancelar</a>
+</body>
+</html>

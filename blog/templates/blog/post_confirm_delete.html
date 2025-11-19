@@ -1,0 +1,13 @@
+<!DOCTYPE html>
+<html>
+<body>
+    <h1>Excluir Post?</h1>
+    <p>Tem certeza que deseja apagar o post: <strong>"{{ post.titulo }}"</strong>?</p>
+
+    <form method="post">
+        {% csrf_token %}
+        <button type="submit">Sim, tenho certeza</button>
+        <a href="{% url 'lista_posts' %}">Cancelar</a>
+    </form>
+</body>
+</html>
