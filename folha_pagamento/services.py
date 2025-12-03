@@ -17,13 +17,35 @@ class CalculadoraFolhaPagamento:
         desconto_faltas = valor_diaria * qtd_faltas
         return desconto_faltas
 
-    def calcular_inss(self, salario_bruto): 
-        total_inss = salario_bruto * 0.10 ## a principio utilizando só 10% como calculo do INSS
-        return total_inss
+    def calcular_inss(self, salario_bruto):
+        teto_inss = 8157.41  # baseado na tabela inss de 2025
+        
+        if salario_bruto > teto_inss: # se ganha acima do teto paga valor fixo
+            return 951.62  # < valor fixo
+            
+        if salario_bruto <= 1518.00:
+            return salario_bruto * 0.075 # faixa 1: 7,5% de aliquota
+        elif salario_bruto <= 2793.88:
+            return (salario_bruto * 0.09) - 22.77 # faixa 2: 9% de aliquota
+        elif salario_bruto <= 4190.83:
+            return (salario_bruto * 0.12) - 106.60 # faixa 3: 12% de aliquota
+        else: # faixa 4: 14% de aliquota ate o teto
+            return (salario_bruto * 0.14) - 190.42 
 
-    def calcular_irrf(self, base_irrf): ## base irrf: salario que sobra depois do desconto do INSS
-        total_irrf = base_irrf * 0.05
-        return total_irrf
+    def calcular_irrf(self, base_irrf):
+            # com base na tabela irrf maio/2025
+            # a base_irrf já eh o (salario bruto - INSS)
+            
+            if base_irrf <= 2428.80:
+                return 0.0 # isento
+            elif base_irrf <= 2826.65:
+                return (base_irrf * 0.075) - 182.16 # 7,5%
+            elif base_irrf <= 3751.05:
+                return (base_irrf * 0.15) - 394.16 # 15%
+            elif base_irrf <= 4664.68:
+                return (base_irrf * 0.225) - 675.49 # 22,5%
+            else: # Acima de 4.664,68
+                return (base_irrf * 0.275) - 908.73 # 27,5%
 
 
     def processar_folha(self, numero_horas_extra=0, qtd_faltas=0):
