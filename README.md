@@ -1,124 +1,86 @@
-# Sistema de Folha de Pagamento - Backend Django
+# Sistema de Folha de Pagamento - Módulo de Cálculos (Dev 2)
 
-Este sistema permite que uma empresa gere folhas de pagamento mensais para funcionários.
+Este documento detalha as implementações realizadas na branch `backend/services`, responsável pela Camada de Serviços, Regras de Negócio e View de Processamento.
 
-## Tipos de Usuários
+## Funcionalidades Implementadas
 
-| Usuário | Permissões |
-|---------|------------|
-| Gerente | Cadastra funcionários, informa horas extras/faltas, gera a folha e o comprovante. |
-| Funcionário | Apenas visualiza seu próprio comprovante. |
+### 1. Regras de Negócio
 
----
+Toda a lógica foi isolada no arquivo `services.py` para garantir segurança e facilidade de manutenção.
 
-## Funcionalidades
+- **Cálculo de Valor Hora:** Baseado na carga horária padrão de **220 horas mensais**.
+- **Horas Extras:** Cálculo automático com acréscimo de **50%** sobre o valor da hora normal.
+- **Faltas:** Desconto proporcional calculado sobre o valor da diária (Salário / 30).
+- **INSS (Atualizado 2025):** Implementação da tabela progressiva com as novas faixas e teto de desconto de **R$ 951,62**.
+- **IRRF (Atualizado 2025/2026):** Cálculo sobre a base deduzida (Bruto - INSS) respeitando a nova faixa de isenção (**até R$ 2.428,80**).
 
-- Login e autenticação
-- Cadastro de funcionários
-- Registro de horas extras e faltas
-- Cálculo automático de salário líquido
-- Geração de comprovante de folha
+### 2. API (Views)
 
----
+Criação do endpoint que recebe os dados brutos e devolve o holerite calculado.
 
-## Tecnologias Utilizadas
+- **Validação de Dados:** O sistema bloqueia salários negativos ou zerados.
+- **Tratamento de Erros:** Respostas HTTP padronizadas (400 Bad Request) para dados inválidos.
+- **Formato JSON:** Comunicação padronizada para integração com o Front-end.
 
-- Python (3.12+)
-- Django
-- Django REST Framework
-- SQLite (desenvolvimento)
+## Documentação da API
 
----
+Como o Dev 3 ficará responsável pelas Rotas (`urls.py`), a View abaixo deve ser conectada ao endpoint sugerido `/api/calcular/`.
 
-## Como Rodar o Projeto (Tutorial para Desenvolvedores)
+### Requisição (POST)
 
-### 1. Clonar o Repositório
+Enviar um JSON contendo os dados do funcionário para o mês corrente.
 
-```bash
-git clone https://github.com/SEU_USUARIO/folha-pagamento.git
-cd folha-pagamento
+```
+{
+  "salario_base": 2500.00,
+  "horas_extras": 0,
+  "faltas": 0
+}
+
 ```
 
-### 2. Criar o Ambiente Virtual (Obrigatório)
+### Resposta de Sucesso (200 OK)
 
-Cada desenvolvedor deve criar seu próprio ambiente virtual.
+O sistema retorna o cálculo detalhado pronto para exibição.
 
-**Criar o ambiente virtual:**
+```
+{
+    "salario_bruto": 2500.0,
+    "salario_liquido": 2297.77,
+    "desconto_inss": 202.23,
+    "desconto_irrf": 0.0
+}
 
-```bash
-python -m venv venv
 ```
 
-**Ativar o ambiente virtual:**
+### Resposta de Erro (400 Bad Request)
 
+Exemplo de retorno caso o salário base não seja enviado.
 
-```bash
-venv\Scripts\activate
+```
+{
+    "erro": "O salário base é obrigatório e deve ser positivo!"
+}
+
 ```
 
+## Tecnologias e Estrutura
 
+- **`services.py`**: Classe `CalculadoraFolhaPagamento` (Lógica Pura).
+- **`views.py`**: Classe `FolhaPagamentoView` (Interface API).
+- **`tests.py`**: Testes Unitários automatizados.
 
+## Como Rodar os Testes
 
-### 3. Instalar as Dependências
+Para garantir a integridade dos cálculos matemáticos (especialmente as faixas de impostos), foram criados testes unitários. Para executar a bateria de testes, rode no terminal:
 
-```bash
-pip install -r requirements.txt
+```
+python manage.py test folha_pagamento
+
 ```
 
-**Caso o arquivo `requirements.txt` ainda não exista:**
+**Cenários Cobertos:**
 
-```bash
-pip install django djangorestframework
-pip freeze > requirements.txt
-```
-
-### 4. Aplicar Migrations e Rodar o Servidor
-
-```bash
-python manage.py migrate
-python manage.py runserver
-```
-
-**Servidor rodando em:** [http://localhost:8000/](http://localhost:8000/)
-
----
-
-## Fluxo de Trabalho no Git (IMPORTANTE)
-
-Cada desenvolvedor trabalha em uma branch própria.
-
-### Criar uma Nova Branch
-
-```bash
-git checkout -b backend/nome-da-feature
-```
-
-### Exemplos de Branches
-
-| Branch | Responsável | Conteúdo |
-|--------|-------------|----------|
-| backend/models | Dev 1 | Models, migrations, admin |
-| backend/services | Dev 2 | Lógica de cálculo da folha |
-| backend/auth | Dev 3 | Auth, permissões, roles |
-
-### Enviar Alterações para o Repositório
-
-```bash
-git add .
-git commit -m "feat: descrição do que foi feito"
-git push origin backend/nome-da-feature
-```
-
----
-
-
-
-## Contribuindo
-
-1. Crie sua branch de feature
-2. Faça commit das suas alterações
-3. Faça push para a branch
-4. Abra um Pull Request, ele aparece assim que você conclui seu commit dentro do site do GitHub.
-
----
-
+1.  Cálculo de salário padrão (R$ 2.500,00) conferindo INSS e IRRF.
+2.  Validação de envio de dados vazios.
+3.  Validação de valores negativos.

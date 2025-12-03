@@ -68,6 +68,7 @@ class CalculadoraFolhaPagamento:
         }
 
 if __name__ == "__main__":
+    # teste rápido manual
     calc = CalculadoraFolhaPagamento(2500)
     resultado = calc.processar_folha()
     print(f"""
