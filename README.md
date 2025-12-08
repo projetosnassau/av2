@@ -1,34 +1,47 @@
-# Sistema de Folha de Pagamento - Módulo de Cálculos (Dev 2)
+# Sistema de Folha de Pagamento - Módulo de Cálculos e Análise (Dev 2)
 
-Este documento detalha as implementações realizadas na branch `backend/services`, responsável pela Camada de Serviços, Regras de Negócio e View de Processamento.
+Este documento detalha as implementações realizadas na branch `backend/services`. O módulo agora conta com validação de dados (Serializers) e serviços de análise gerencial.
 
 ## Funcionalidades Implementadas
 
-### 1. Regras de Negócio
+### 1. Segurança e Validação (`serializers.py`)
 
-Toda a lógica foi isolada no arquivo `services.py` para garantir segurança e facilidade de manutenção.
+Atendendo à solicitação de segurança, implementamos uma camada de validação que sanitiza os dados antes do processamento.
 
-- **Cálculo de Valor Hora:** Baseado na carga horária padrão de **220 horas mensais**.
-- **Horas Extras:** Cálculo automático com acréscimo de **50%** sobre o valor da hora normal.
-- **Faltas:** Desconto proporcional calculado sobre o valor da diária (Salário / 30).
-- **INSS (Atualizado 2025):** Implementação da tabela progressiva com as novas faixas e teto de desconto de **R$ 951,62**.
-- **IRRF (Atualizado 2025/2026):** Cálculo sobre a base deduzida (Bruto - INSS) respeitando a nova faixa de isenção (**até R$ 2.428,80**).
+- **Tipagem Forte:** Conversão automática para `Decimal` (evita erros de arredondamento).
+- **Travas de Negócio:**
 
-### 2. API (Views)
+  - Salário não pode ser inferior ao mínimo (R$ 1.518,00).
+  - Bloqueio de números negativos.
+  - Limite de 30 faltas por mês.
 
-Criação do endpoint que recebe os dados brutos e devolve o holerite calculado.
+### 2. Análise Salarial (`services.py`)
 
-- **Validação de Dados:** O sistema bloqueia salários negativos ou zerados.
-- **Tratamento de Erros:** Respostas HTTP padronizadas (400 Bad Request) para dados inválidos.
-- **Formato JSON:** Comunicação padronizada para integração com o Front-end.
+Novo serviço capaz de processar lotes de funcionários.
+
+- **Filtragem e Ranking:** Ordena a lista de pagamentos do maior para o menor salário líquido.
+- **Estatísticas:** Calcula automaticamente:
+
+  - Maior e Menor salário.
+  - Média salarial da equipe.
+  - Custo total da folha.
+
+### 3. Regras de Cálculo (2025)
+
+- **INSS:** Tabela progressiva 2025 (Teto R$ 951,62).
+- **IRRF:** Tabela progressiva (Isenção até R$ 2.428,80).
+- **Extras:** Adicional de 50%.
+- **Faltas:** Desconto proporcional (Salário / 30).
 
 ## Documentação da API
 
-Como o Dev 3 ficará responsável pelas Rotas (`urls.py`), a View abaixo deve ser conectada ao endpoint sugerido `/api/calcular/`.
+O Dev 3 deve configurar as rotas no `urls.py` apontando para as Views criadas.
 
-### Requisição (POST)
+### Rota 1: Cálculo Individual
 
-Enviar um JSON contendo os dados do funcionário para o mês corrente.
+**Sugestão de URL:** `/api/calcular/` **Método:** `POST`
+
+**Entrada (JSON):**
 
 ```
 {
@@ -39,9 +52,7 @@ Enviar um JSON contendo os dados do funcionário para o mês corrente.
 
 ```
 
-### Resposta de Sucesso (200 OK)
-
-O sistema retorna o cálculo detalhado pronto para exibição.
+**Saída de Sucesso (200 OK):**
 
 ```
 {
@@ -53,26 +64,50 @@ O sistema retorna o cálculo detalhado pronto para exibição.
 
 ```
 
-### Resposta de Erro (400 Bad Request)
+### Rota 2: Análise de Lista (Gerencial)
 
-Exemplo de retorno caso o salário base não seja enviado.
+**Sugestão de URL:** `/api/analisar/` **Método:** `POST` **Descrição:** Envie uma lista (array) de funcionários para gerar ranking e estatísticas.
+
+**Entrada (JSON Array):**
+
+```
+[
+  { "nome": "Gerente", "salario_base": 5000.00 },
+  { "nome": "Assistente", "salario_base": 2000.00 },
+  { "nome": "Estagiário", "salario_base": 1500.00 }
+]
+
+```
+
+**Saída (JSON - Exemplo):**
 
 ```
 {
-    "erro": "O salário base é obrigatório e deve ser positivo!"
+    "relatorio_gerencial": {
+        "total_funcionarios": 3,
+        "maior_salario_liquido": 4118.57,
+        "media_salarial": 2496.20,
+        "folha_total_custo": 7488.60
+    },
+    "ranking_detalhado": [
+        { "nome": "Gerente", "salario_liquido": 4118.57, ... },
+        { "nome": "Assistente", "salario_liquido": 1820.03, ... },
+        { "nome": "Estagiário", "salario_liquido": 1550.00, ... }
+    ]
 }
 
 ```
 
 ## Tecnologias e Estrutura
 
-- **`services.py`**: Classe `CalculadoraFolhaPagamento` (Lógica Pura).
-- **`views.py`**: Classe `FolhaPagamentoView` (Interface API).
+- **`serializers.py`**: Classe `FolhaPagamentoSerializer` (Validação e Segurança).
+- **`services.py`**: Classes `CalculadoraFolhaPagamento` e `AnaliseSalarialService` (Lógica).
+- **`views.py`**: Classes `FolhaPagamentoView` e `AnaliseSalarialView` (API).
 - **`tests.py`**: Testes Unitários automatizados.
 
 ## Como Rodar os Testes
 
-Para garantir a integridade dos cálculos matemáticos (especialmente as faixas de impostos), foram criados testes unitários. Para executar a bateria de testes, rode no terminal:
+Para garantir a integridade dos cálculos matemáticos e das validações de segurança:
 
 ```
 python manage.py test folha_pagamento
@@ -81,6 +116,6 @@ python manage.py test folha_pagamento
 
 **Cenários Cobertos:**
 
-1.  Cálculo de salário padrão (R$ 2.500,00) conferindo INSS e IRRF.
-2.  Validação de envio de dados vazios.
-3.  Validação de valores negativos.
+1.  Cálculo de salário padrão (R$ 2.500,00) conferindo INSS e IRRF 2025.
+2.  Validação de segurança (bloqueio de salário negativo e abaixo do mínimo).
+3.  Ranking salarial (ordenação correta da lista e cálculo de estatísticas).

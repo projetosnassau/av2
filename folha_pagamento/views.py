@@ -1,36 +1,41 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from .services import CalculadoraFolhaPagamento
+from .serializers import FolhaPagamentoSerializer
+from .services import CalculadoraFolhaPagamento, AnaliseSalarialService
 
 class FolhaPagamentoView(APIView):
+    """
+    Calcula um único salário (Individual)
+    """
     def post(self, request):
-        dados = request.data ## recebe os dados enviados pelo usuário
+       # O serializer valida os dados antes de qualquer coisa
+        serializer = FolhaPagamentoSerializer(data=request.data)
         
-        try:
-            # pega os valores, se não existir assume que é 0
-            salario_base = float(dados.get('salario_base', 0))
-            horas_extras = float(dados.get('horas_extras', 0))
-            faltas = float(dados.get('faltas', 0))
-
-            if salario_base <= 0:
-                return Response(
-                    {"erro": "O salário base é obrigatório e deve ser positivo!"}, 
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-
-            # instanciando o service
-            calculadora = CalculadoraFolhaPagamento(salario_base)
-
-            # processamento da folha
-            resultado = calculadora.processar_folha(horas_extras, faltas)
-
-            # retornando o resultado
+        if serializer.is_valid():
+            # Se chegou aqui os dados são seguros e limpos
+            dados = serializer.validated_data
+            
+            calc = CalculadoraFolhaPagamento(dados['salario_base'])
+            resultado = calc.processar_folha(dados['horas_extras'], dados['faltas'])
+            
             return Response(resultado, status=status.HTTP_200_OK)
+        
+        # Se deu erro (ex: salario negativo), tem q devolver o erro formatado
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-        except ValueError:
-            # caso enviem texto ao invés de numero
-            return Response(
-                {"erro": "Por favor, envie apenas números!"}, 
-                status=status.HTTP_400_BAD_REQUEST
-            )
+class AnaliseSalarialView(APIView):
+    """
+    recebe uma lista de funcionários e devolve estatisticas
+    """
+    def post(self, request):
+        # many=True avisa que vamos receber uma lista de objetos, não só um
+        serializer = FolhaPagamentoSerializer(data=request.data, many=True)
+
+        if serializer.is_valid():
+            analise_service = AnaliseSalarialService()
+            relatorio = analise_service.analisar_lista(serializer.validated_data)
+            
+            return Response(relatorio, status=status.HTTP_200_OK)
+
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
